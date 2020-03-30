@@ -169,6 +169,31 @@ async def on_message(msg):
         warnmess.set_footer(text = 'To reply to a user with a message from Chatty, use ;send <UserID> <Message>')
         await reportChn.send(embed = warnmess)
         return
+
+    if not msg.author.bot and msg.channel.id == 687835247102001228:
+        splitmes = msg.content.split()
+        if splitmes[0] == ';echo':
+            if len(splitmes) == 1:
+                await msg.channel.send('Where would you like to send a message to?')
+                return
+            if len(splitmes) == 2:
+                await msg.channel.send('What message would you like to send?')
+                return
+            if not str(splitmes[1]).isdigit():
+                await msg.channel.send('Please use a ChannelID as a target of where to send to.')
+                return
+            target = client.get_channel(int(splitmes[1]))
+            if target == None:
+                await msg.channel.send('Channel not found.')
+                return
+            await target.send(' '.join(splitmes[2:]))
+            await msg.channel.send('Message sent.')
+            return
+
+    if not msg.author.bot and get(msg.author.roles, name = MODROLE):
+        if '.ban' in msg.content:
+            for temp in msg.mentions:
+                await temp.add_roles(mainServer.get_role(694020794061422593))
                 
     if not msg.author.bot and (msg.channel.id == COMMANDCHNNUM or (msg.channel.id == REPORTCHNNUM and msg.content.startswith(';send'))):
         if get(msg.author.roles, name = MODROLE):
@@ -309,7 +334,7 @@ async def on_message(msg):
         return
 
     # Check user messages for keywords in the trading channel
-    if msg.channel.name == 'trading':
+    if msg.channel.id == 654809293543047199:
         for keywords in keywordsFile:
             if keywords in msg.content.lower():
                 warnmess = discord.Embed()
