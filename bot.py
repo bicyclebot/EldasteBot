@@ -453,7 +453,7 @@ async def on_message(msg):
             await reportChn.send(embed = warnmess)
         return
                 
-    if not msg.author.bot and (msg.channel.id == COMMANDCHNNUM or (msg.channel.id == REPORTCHNNUM and msg.content.startswith(';send'))):
+    if not msg.author.bot and (msg.channel.id == COMMANDCHNNUM or (msg.channel.id == REPORTCHNNUM and msg.content.startswith(';send')) or (msg.channel.id == 765839161830932481 and msg.content.startswith(';echo'))):
         if get(msg.author.roles, name = MODROLE):
             #print('Command Recieved')
             splitmes = msg.content.split()
