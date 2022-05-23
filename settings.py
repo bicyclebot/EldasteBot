@@ -1,20 +1,20 @@
 # Setting that are server dependant
 
 # Automute Settings
-autoCallChn = 672590825603203072
-autoCallRole = 672590994755158029
-modRole = 645013071827566632
-ruleChn = 646053713907023889
+autoCallChn = 978356784907579402
+autoCallRole = 978357057126277150
+modRole = 968400490159284274
+ruleChn = 977248964321619978
 
 # Ban Settings
-guildName = "the Pokemon Max Raids Discord"
-appealMes = "You may appeal your ban here: <https://old.reddit.com/message/compose?to=%2Fr%2Fpokemonmaxraids>"
+guildName = "the Melt Room Emporium"
+appealMes = "You may appeal your ban by messaging the server owner u/enragedbicycle on Reddit 
 
 # Setting for where to moniter length
-announcechn = 666388961303855115
+announcechn = 0
 
 # Settings for ;clear
-reactemote = 646457676196347906
+reactemote = 969340359886917673
 
 # Settings that determine behavior
 
