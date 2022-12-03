@@ -8,7 +8,7 @@ ruleChn = 977248964321619978
 
 # Ban Settings
 guildName = "the Melt Room Emporium"
-appealMes = "You may appeal your ban by messaging the server owner u/enragedbicycle on Reddit 
+appealMes = "You may appeal your ban by messaging the server owner u/enragedbicycle on Reddit" 
 
 # Setting for where to moniter length
 announcechn = 0

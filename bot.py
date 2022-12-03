@@ -15,6 +15,7 @@ from discord.utils import get
 # Establish settings and IO helpers
 MODROLE = "Mods"
 COMMANDCHNNUM = int(os.environ.get('COMMANDCHN'))
+NOTECHNNUM = int(os.environ.get('NOTECHN'))
 REPORTCHNNUM = int(os.environ.get('REPORTCHN'))
 REMOVECHNNUM = int(os.environ.get('REMOVECHN'))
 LOGCHNNUM = int(os.environ.get('LOGCHN'))
@@ -77,9 +78,10 @@ db.run("CREATE TABLE IF NOT EXISTS tempbans (id bigint PRIMARY KEY, time int)")
 db.run("CREATE TABLE IF NOT EXISTS usernotes (id bigint PRIMARY KEY, linkedact text, notes text)")
 db.run("CREATE TABLE IF NOT EXISTS exempteds (id bigint)")
 
-client = discord.Client()
+client = discord.Client(intents=discord.Intents.all())
 mainServer = None
 commandChn = None
+noteChn = None
 reportChn = None
 removeChn = None
 logChn = None
@@ -458,7 +460,7 @@ async def on_message(msg):
     if not msg.author.bot and (msg.channel.id == COMMANDCHNNUM or (msg.channel.id == REPORTCHNNUM and msg.content.startswith(';send'))):
         if get(msg.author.roles, name = MODROLE):
             #print('Command Recieved')
-            splitmes = msg.content.split()
+            splitmes = msg.content.split(' ')
             
             if len(splitmes) == 0:
                 return
@@ -758,6 +760,315 @@ async def on_message(msg):
             elif splitmes[0] == ';help':
                 await commandChn.send(helptext)
         return
+    
+    # Disaster time
+    if not msg.author.bot and (
+            msg.channel.id == NOTECHNNUM or (msg.channel.id == REPORTCHNNUM and msg.content.startswith(';send'))):
+        if get(msg.author.roles, name=MODROLE):
+            # print('Command Recieved')
+            splitmes = msg.content.split(' ')
+
+            if len(splitmes) == 0:
+                return
+
+            if splitmes[0] == ';get':
+                await noteChn.send(', '.join(map(lambda x: '`' + x + '`', warninglist)))
+            elif splitmes[0] == ';set':
+                if len(splitmes) == 1:
+                    await noteChn.send('What word or regular expression would you like to be notified of?')
+                    return
+                warninglist.append(splitmes[1])
+                db.run("INSERT INTO forbidden VALUES (%(new)s)", new=splitmes[1])
+                composedwarning = composeWarning(warninglist)
+                await noteChn.send('Word added.')
+            elif splitmes[0] == ';rm':
+                if len(splitmes) == 1:
+                    await noteChn.send('What word or regular expression would you like to not be notified of?')
+                    return
+                warninglist.remove(splitmes[1])
+                db.run("DELETE FROM forbidden WHERE words=(%(old)s)", old=splitmes[1])
+                composedwarning = composeWarning(warninglist)
+                await noteChn.send('Word removed.')
+            elif splitmes[0] == ';getr':
+                await noteChn.send(', '.join(map(lambda x: '`' + x + '`', removelist)))
+            elif splitmes[0] == ';setr':
+                if len(splitmes) == 1:
+                    await noteChn.send('What word or regular expression would you like to be removed?')
+                    return
+                removelist.append(splitmes[1])
+                db.run("INSERT INTO vile VALUES (%(new)s)", new=splitmes[1])
+                composedremove = composeWarning(removelist)
+                await noteChn.send('Word added.')
+            elif splitmes[0] == ';rmr':
+                if len(splitmes) == 1:
+                    await noteChn.send('What word or regular expression would you like to not be removed?')
+                    return
+                removelist.remove(splitmes[1])
+                db.run("DELETE FROM vile WHERE words=(%(old)s)", old=splitmes[1])
+                composedremove = composeWarning(removelist)
+                await noteChn.send('Word removed.')
+            elif splitmes[0] == ';getm':
+                await noteChn.send(', '.join(map(lambda x: '`' + x + '`', mutelist)))
+            elif splitmes[0] == ';setm':
+                if len(splitmes) == 1:
+                    await noteChn.send('What word or regular expression would you like to be an automute?')
+                    return
+                mutelist.append(splitmes[1])
+                db.run("INSERT INTO automute VALUES (%(new)s)", new=splitmes[1])
+                composedmute = composeWarning(mutelist, False)
+                await noteChn.send('Word added.')
+            elif splitmes[0] == ';rmm':
+                if len(splitmes) == 1:
+                    await noteChn.send('What word or regular expression would you like to not be an automute?')
+                    return
+                mutelist.remove(splitmes[1])
+                db.run("DELETE FROM automute WHERE words=(%(old)s)", old=splitmes[1])
+                composedmute = composeWarning(mutelist, False)
+                await noteChn.send('Word removed.')
+
+            if splitmes[0] == ';getex':
+                await noteChn.send(', '.join(map(lambda x: '<@' + str(x) + '>', exceptionlist)))
+            elif splitmes[0] == ';setex':
+                if len(splitmes) == 1:
+                    await noteChn.send('What user would you like to exempt?')
+                    return
+                if not str(splitmes[1]).isdigit():
+                    await msg.channel.send('Please use a UserID.')
+                    return
+                exceptionlist.append(int(splitmes[1]))
+                db.run("INSERT INTO exempteds VALUES (%(new)s)", new=splitmes[1])
+                await noteChn.send('User exempted.')
+            elif splitmes[0] == ';rmex':
+                if len(splitmes) == 1:
+                    await noteChn.send('What user would you like to remove from the exemption list?')
+                    return
+                if not str(splitmes[1]).isdigit():
+                    await msg.channel.send('Please use a UserID.')
+                    return
+                exceptionlist.remove(int(splitmes[1]))
+                db.run("DELETE FROM exempteds WHERE id=(%(old)s)", old=splitmes[1])
+                await noteChn.send('User removed.')
+
+            elif splitmes[0] == ';perma':
+                if len(splitmes) == 1:
+                    await noteChn.send('What user would you no longer like to come back?')
+                    return
+                db.run("DELETE FROM tempbans WHERE id=(%(old)s)", old=splitmes[1])
+                await noteChn.send('User removed.')
+            elif splitmes[0] == ';unban':
+                if len(splitmes) == 1:
+                    await noteChn.send('What user would you like to unban?')
+                    return
+                if not str(splitmes[1]).isdigit():
+                    await msg.channel.send('Please use a UserID as a target of who to unaban.')
+                    return
+                await unbanUser(int(splitmes[1]))
+            elif splitmes[0] == ';banstatus':
+                if len(splitmes) == 1:
+                    await noteChn.send('What user would you like to check?')
+                    return
+                if not str(splitmes[1]).isdigit():
+                    await msg.channel.send('Please use a UserID as a target of who to check.')
+                    return
+                time = timeReader(db.one("SELECT time FROM tempbans WHERE id=(%(old)s)", old=splitmes[1]))
+                if not time:
+                    time = {'stringrep': 'This user is not tempbanned.'}
+                await msg.channel.send(time['stringrep'])
+            elif splitmes[0] == ';send':
+                if len(splitmes) == 1:
+                    await msg.channel.send('Who would you like to send a message to?')
+                    return
+                if len(splitmes) == 2:
+                    await msg.channel.send('What message would you like to send?')
+                    return
+                if not str(splitmes[1]).isdigit():
+                    await msg.channel.send('Please use a UserID as a target of who to send to.')
+                    return
+                target = client.get_user(int(splitmes[1]))
+                if target == None:
+                    await msg.channel.send('User not found.')
+                    return
+                targetchn = target.dm_channel
+                if targetchn == None:
+                    await target.create_dm()
+                    targetchn = target.dm_channel
+                await targetchn.send(' '.join(splitmes[2:]))
+                await msg.channel.send('Message sent.')
+            elif splitmes[0] == ';note':
+                if len(splitmes) == 1:
+                    await msg.channel.send('Which user?')
+                    return
+                if not str(splitmes[1]).isdigit():
+                    await msg.channel.send('Please use a UserID.')
+                    return
+                if len(splitmes) == 2:
+                    await sendNotes(splitmes[1], msg.channel)
+                    return
+                addNote(splitmes[1], msg.author.id, ' '.join(splitmes[2:]))
+                'Should be no issue'
+                await msg.channel.send('Note Added.')
+            elif splitmes[0] == ';link':
+                if len(splitmes) == 1:
+                    await msg.channel.send('Which user?')
+                    return
+                if len(splitmes) == 2:
+                    await msg.channel.send('Which Reddit account?')
+                    return
+                if not str(splitmes[1]).isdigit():
+                    await msg.channel.send('Please use a UserID.')
+                    return
+                if linkAcct(splitmes[1], splitmes[2]):
+                    await msg.channel.send('Account Linked.')
+                else:
+                    await msg.channel.send('Invalid Reddit Username.')
+            elif splitmes[0] == ';echo':
+                if len(splitmes) == 1:
+                    await msg.channel.send('Where would you like to send a message to?')
+                    return
+                if len(splitmes) == 2:
+                    await msg.channel.send('What message would you like to send?')
+                    return
+                if not str(splitmes[1]).isdigit():
+                    await msg.channel.send('Please use a ChannelID as a target of where to send to.')
+                    return
+                target = client.get_channel(int(splitmes[1]))
+                if target == None:
+                    await msg.channel.send('Channel not found.')
+                    return
+                await target.send(' '.join(splitmes[2:]))
+                await msg.channel.send('Message sent.')
+            elif splitmes[0] == ';ban':
+                if len(splitmes) == 1:
+                    await msg.channel.send('Who would you like to ban?')
+                    return
+                if not str(splitmes[1]).isdigit():
+                    await msg.channel.send('Please use a UserID as a target of who to ban.')
+                    return
+                target = client.get_user(int(splitmes[1]))
+                if target != None:
+                    if len(splitmes) == 2:
+                        reason = None
+                        bantext = "You have been banned from " + settings.guildName + ". " + settings.appealMes
+                    else:
+                        reason = ' '.join(splitmes[2:])
+                        bantext = "You have been banned from " + settings.guildName + " for the following reasons:\n`" + reason + "`\n" + settings.appealMes
+                else:
+                    target = await client.fetch_user(int(splitmes[1]))
+                    if len(splitmes) == 2:
+                        reason = None
+                        bantext = None
+                    else:
+                        reason = ' '.join(splitmes[2:])
+                        bantext = None
+                if target == None:
+                    await msg.channel.send('User not found.')
+                    return
+                await banUser(target, msg.guild, -1, reason, bantext)
+            elif splitmes[0] == ';sban':
+                if len(splitmes) == 1:
+                    await msg.channel.send('Who would you like to ban?')
+                    return
+                if not str(splitmes[1]).isdigit():
+                    await msg.channel.send('Please use a UserID as a target of who to ban.')
+                    return
+                target = client.get_user(int(splitmes[1]))
+                if target == None:
+                    target = await client.fetch_user(int(splitmes[1]))
+                if len(splitmes) == 2:
+                    reason = None
+                else:
+                    reason = ' '.join(splitmes[2:])
+                if target == None:
+                    await msg.channel.send('User not found.')
+                    return
+                await banUser(target, msg.guild, -1, reason)
+            elif splitmes[0] == ';tempban':
+                if len(splitmes) == 1:
+                    await msg.channel.send('Who would you like to ban?')
+                    return
+                if len(splitmes) == 2:
+                    await msg.channel.send('How long do you want the ban to be?')
+                    return
+                if not str(splitmes[1]).isdigit():
+                    await msg.channel.send('Please use a UserID as a target of who to ban.')
+                    return
+                try:
+                    duration = timeReader(splitmes[2])
+                except:
+                    await msg.channel.send(
+                        'Malformed duration. Please use a time of the form XhXdXw or use time in hours.')
+                    return
+                target = client.get_user(int(splitmes[1]))
+                if target != None:
+                    if len(splitmes) == 3:
+                        reason = None
+                        bantext = "You have been banned from " + settings.guildName + " for " + duration[
+                            'stringrep'] + ". " + settings.appealMes
+                    else:
+                        reason = ' '.join(splitmes[3:])
+                        bantext = "You have been banned from " + settings.guildName + " for " + duration[
+                            'stringrep'] + " for the following reasons:\n`" + reason + "`\n" + settings.appealMes
+                else:
+                    target = await client.fetch_user(int(splitmes[1]))
+                    if len(splitmes) == 3:
+                        reason = None
+                        bantext = None
+                    else:
+                        reason = ' '.join(splitmes[3:])
+                        bantext = None
+                if target == None:
+                    await msg.channel.send('User not found.')
+                    return
+                await banUser(target, msg.guild, duration['hours'], reason, bantext)
+            elif splitmes[0] == ';clear':
+                if len(splitmes) == 1:
+                    current = await msg.channel.history(limit=1, before=msg).next()
+                else:
+                    if not str(splitmes[1]).isdigit():
+                        await msg.channel.send('Please use a MessageID as an argument.')
+                        return
+                    else:
+                        current = await msg.channel.fetch_message(int(splitmes[1]))
+                rxnimage = client.get_emoji(settings.reactemote)
+                while current.author == client.user and len(current.reactions) == 0:
+                    await current.add_reaction(rxnimage)
+                    current = await msg.channel.history(limit=1, before=current).next()
+            elif splitmes[0] == ';locate':
+                if len(splitmes) == 1:
+                    await msg.channel.send('Who would you like to search for?')
+                    return
+                composedRE = ' '.join(splitmes[1:])
+                nuum = composedRE.isdigit()
+                found = 0
+                startmes = 'Searching for users '
+                if nuum:
+                    startmes = startmes + 'and discriminators '
+                startmes = startmes + 'that match Regex: ' + composedRE
+                await msg.channel.send(startmes)
+                composedRE = re.compile(composedRE, re.I)
+                for usr in msg.guild.members:
+                    if nuum:
+                        if re.search(composedRE, usr.discriminator):
+                            await msg.channel.send('User Discriminator Matched: ' + usr.mention)
+                            found += 1
+                            continue
+                    if re.search(composedRE, usr.name):
+                        await msg.channel.send('UserMatched: ' + usr.mention)
+                        found += 1
+                        continue
+                    if usr.nick and re.search(composedRE, usr.nick):
+                        await msg.channel.send('UserMatched: ' + usr.mention)
+                        found += 1
+                        continue
+                if found == 0:
+                    await msg.channel.send('No matching users found.')
+                elif found == 1:
+                    await msg.channel.send('1 user found.')
+                else:
+                    await msg.channel.send(str(found) + ' users found.')
+            elif splitmes[0] == ';help':
+                await noteChn.send(helptext)
+        return
 
     # Auto note things in the LogChn that mention users that aren't bot generated
     if not msg.author.bot and msg.channel.id == LOGCHNNUM:
@@ -769,7 +1080,7 @@ async def on_message(msg):
         return
 
     # Remove vile words
-    dangerwords = filter(composedremove.match, msg.content.split())
+    dangerwords = filter(composedremove.match, msg.content.split(' '))
 
     cdw = ', '.join(map(str, dangerwords))
     if cdw != '':
@@ -814,7 +1125,7 @@ async def on_message(msg):
 
     # Analyze the message for warning words, notify mods if any appear
     if msg.author.id not in exceptionlist:
-        dangerwords = filter(composedwarning.match, msg.content.split())
+        dangerwords = filter(composedwarning.match, msg.content.split(' '))
 
         cdw = ', '.join(map(str, dangerwords))
         if cdw != '':
@@ -837,7 +1148,7 @@ async def on_message(msg):
     # Handle Channel Specific catchlists
     if str(msg.channel.id) in csCommands:
         for command in csCommands[str(msg.channel.id)]:
-            chkwords = ', '.join(filter(command[1].match, msg.content.split()))
+            chkwords = ', '.join(filter(command[1].match, msg.content.split(' ')))
                         
             if chkwords != '':
                 dele = False
@@ -877,12 +1188,18 @@ async def on_message(msg):
                     await msg.delete()
                     return
 
+@client.event
+async def on_message_edit(before, after):
+    ##throw below out the window
+    await on_message(after)
+                
 # When bot is ready, open the command channel
 @client.event
 async def on_ready():
-    global commandChn, warninglist, composedwarning, reportChn, logChn, mainServer, composedremove, removelist
+    global commandChn, noteChn, warninglist, composedwarning, reportChn, logChn, mainServer, composedremove, removelist
     global mutelist, composedmute, removeChn, exceptionlist 
     commandChn = client.get_channel(COMMANDCHNNUM)
+    noteChn = client.get_channel(NOTECHNNUM)
     reportChn = client.get_channel(REPORTCHNNUM)
     logChn = client.get_channel(LOGCHNNUM)
     removeChn = client.get_channel(REMOVECHNNUM)
