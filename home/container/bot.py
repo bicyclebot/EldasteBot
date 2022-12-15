@@ -14,11 +14,11 @@ from discord.utils import get
 
 # Establish settings and IO helpers
 MODROLE = "Mods"
-COMMANDCHNNUM = int(os.environ.get('COMMANDCHN'))
-NOTECHNNUM = int(os.environ.get('NOTECHN'))
-REPORTCHNNUM = int(os.environ.get('REPORTCHN'))
-REMOVECHNNUM = int(os.environ.get('REMOVECHN'))
-LOGCHNNUM = int(os.environ.get('LOGCHN'))
+COMMANDCHNNUM = 1005673821795258418
+NOTECHNNUM = 969821729713188874
+REPORTCHNNUM = 1005673841365884998
+REMOVECHNNUM = 1005673841365884998
+LOGCHNNUM = 1005673841365884998
 
 def loadMentions():
     tmpm = {}
