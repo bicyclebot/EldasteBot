@@ -70,7 +70,7 @@ watchlist = {}
 exceptionlist = []
 mention_dict = loadMentions()
 keywordsFile = loadKeywords()
-db = postgres.Postgres(url = os.environ.get('DATABASE_URL'))
+db = postgres.Postgres(url = "polar-arbor-373204:us-central1:eldastebotdb")
 db.run("CREATE TABLE IF NOT EXISTS forbidden (words text)")
 db.run("CREATE TABLE IF NOT EXISTS vile (words text)")
 db.run("CREATE TABLE IF NOT EXISTS automute (words text)")
